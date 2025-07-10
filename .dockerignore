@@ -1,0 +1,20 @@
+# Files and directories to ignore when building the Docker image.
+# This keeps the build context small and speeds up the build process.
+
+# Node.js
+node_modules
+npm-debug.log
+*.log
+
+# Environment files (should be passed at runtime, not built into the image)
+.env
+
+# Docker
+Dockerfile
+
+# Git
+.git
+.gitignore
+
+# Documentation
+*.md

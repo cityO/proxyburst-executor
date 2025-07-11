@@ -4,6 +4,8 @@
 
 欢迎来到 ProxyBurst 系统的引擎室！`proxyburst-executor` 是构成整个分布式处理网络的一个独立的 “工人” (Worker)。
 
+> 需要一个给这支施工队下达指令的“遥控器”吗？请查看 [**`proxyburst-client`**](https://github.com/cityO/proxyburst-client) 仓库来开始你的项目！
+
 ## 1. 这是什么？它扮演什么角色？
 
 如果你已经阅读了 `proxyburst-client` 的文档, 你知道客户端的角色是“项目经理助理”, 负责将一个巨大的工程计划 (例如, 10,000 个 API 请求) 分解成独立的工单。

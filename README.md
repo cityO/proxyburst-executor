@@ -4,6 +4,8 @@
 
 Welcome to the engine room of the ProxyBurst system! The `proxyburst-executor` is an independent "Worker" that constitutes the distributed processing network.
 
+> **Need a "remote control" for this crew?** Check out the [**`proxyburst-client`**](https://github.com/cityO/proxyburst-client) repository to get started!
+
 ## 1. What Is This & What Role Does It Play?
 
 If you've read the `proxyburst-client` documentation, you know the client's role is the "project manager's assistant," responsible for breaking down a massive project (e.g., 10,000 API requests) into individual work orders.
@@ -18,8 +20,6 @@ Its sole responsibilities are to:
 5.  Return to step 1 and wait for the next task.
 
 **The key is parallelism**: You can run 5, 50, or even 500 instances of this executor simultaneously. Like a real construction crew, they will all grab different work orders from the job board at the same time, completing what would have been hours of serial work in mere seconds.
-
-> **Need a "remote control" for this crew?** Check out the [**`proxyburst-client`**](https://github.com/cityO/proxyburst-client) repository to get started!
 
 ---
 

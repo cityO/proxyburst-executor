@@ -1,90 +1,94 @@
-# ProxyBurst 执行器 (v2.0) - 分布式网络的“施工队”
+[English](README.md) | [简体中文](README.zh-CN.md)
 
-欢迎来到 ProxyBurst 系统的引擎室！`proxyburst-executor` 是构成整个分布式处理网络的一个独立的 “工人” (Worker)。
+# ProxyBurst Executor (v2.0) - The "Construction Crew" of the Distributed Network
 
-## 1. 这是什么？它扮演什么角色？
+Welcome to the engine room of the ProxyBurst system! The `proxyburst-executor` is an independent "Worker" that constitutes the distributed processing network.
 
-如果你已经阅读了 `proxyburst-client` 的文档, 你知道客户端的角色是“项目经理助理”, 负责将一个巨大的工程计划 (例如, 10,000 个 API 请求) 分解成独立的工单。
+## 1. What Is This & What Role Does It Play?
 
-**这个执行器 (`Executor`) 就是接收并完成这些工单的 “施工队成员”。**
+If you've read the `proxyburst-client` documentation, you know the client's role is the "project manager's assistant," responsible for breaking down a massive project (e.g., 10,000 API requests) into individual work orders.
 
-它的唯一职责就是：
-1.  盯着共享的 “任务板” (Redis 任务队列)。
-2.  只要任务板上出现新的工单 (一个独立的 HTTP 请求), 就立刻领取它。
-3.  高效地执行这个 HTTP 请求。
-4.  将执行结果 (无论是成功还是失败) 报告回去。
-5.  返回第一步, 继续等待下一个任务。
+**This Executor is the "construction crew member" that receives and completes those work orders.**
 
-**关键在于并行**：你可以同时运行 5 个、50 个、甚至 500 个这样的执行器实例。它们会像一支真正的施工队一样, 同时从任务板上领取不同的工单, 从而将原本需要数小时的串行工作, 在几秒钟内并行完成。
+Its sole responsibilities are to:
+1.  Watch the shared "job board" (a Redis task queue).
+2.  As soon as a new work order (an individual HTTP request) appears on the board, immediately claim it.
+3.  Efficiently execute that HTTP request.
+4.  Report the result (whether success or failure) back.
+5.  Return to step 1 and wait for the next task.
 
----
+**The key is parallelism**: You can run 5, 50, or even 500 instances of this executor simultaneously. Like a real construction crew, they will all grab different work orders from the job board at the same time, completing what would have been hours of serial work in mere seconds.
 
-## 2. 核心特性
-
-- **🚀 分布式与可伸缩**: 作为“施工队”的一员, 你可以随时增加或减少工人的数量 (即部署更多或更少的执行器实例) 来应对不同的工作负载, 而无需对系统进行任何其他更改。
-- **🧩 无状态**: 每个执行器都是独立的, 它不存储任何长期信息。所有的任务状态都由 Redis 统一管理, 这使得系统非常健壮和易于维护。
-- **⚙️ 动态配置**: 无需修改任何代码, 你可以通过环境变量轻松配置所有关键参数, 如 Redis 连接地址、队列名称和并发处理能力。
-- **❤️ 健康检查**: 内置了一个 `/health` HTTP 接口, 这就像一个工人的健康报告。容器编排系统 (如 Kubernetes) 可以通过定期访问这个接口来确认每个工人是否都在正常工作, 如果有工人“生病”了, 系统就可以自动替换掉它。
-- **🌙 优雅停机**: 当你需要关闭一个执行器时, 它不会立即撂挑子走人。相反, 它会“有风度地”先完成手中正在处理的工单, 确保没有任何工作半途而废, 然后再安全退出。
+> **Need a "remote control" for this crew?** Check out the [**`proxyburst-client`**](https://github.com/cityO/proxyburst-client) repository to get started!
 
 ---
 
-## 3. 快速上手: 部署你的第一个工人
+## 2. Core Features
 
-### 第 1 步: 安装
-在你的服务器或容器环境中, 获取代码并安装依赖。
+- **🚀 Distributed & Scalable**: As a member of the "construction crew," you can add or remove workers (i.e., deploy more or fewer executor instances) at any time to handle different workloads, without any other changes to the system.
+- **🧩 Stateless**: Each executor is independent and stores no long-term information. All task states are managed centrally by Redis, making the system highly robust and easy to maintain.
+- **⚙️ Dynamic Configuration**: Configure all key parameters, such as Redis connection details, queue names, and concurrency, easily through environment variables without modifying any code.
+- **❤️ Health Checks**: Includes a built-in `/health` HTTP endpoint, which acts like a worker's health report. Container orchestration systems (like Kubernetes) can periodically check this endpoint to confirm each worker is functioning correctly and automatically replace any that are "sick."
+- **🌙 Graceful Shutdown**: When you need to shut down an executor, it doesn't just drop its tools and leave. Instead, it "gracefully" finishes the work order it's currently handling, ensuring no job is left half-done before safely exiting.
+
+---
+
+## 3. Quick Start: Deploying Your First Worker
+
+### Step 1: Installation
+On your server or in your container environment, get the code and install dependencies.
 ```bash
-# 假设你已经获取了代码
+# Assuming you have the code
 cd proxyburst-executor
 npm install
 ```
 
-### 第 2 步: 配置
-执行器通过环境变量进行配置。最简单的方式是创建一个 `.env` 文件。
+### Step 2: Configuration
+The executor is configured via environment variables. The easiest way is to create a `.env` file.
 ```bash
-# 从模板复制一份配置文件
+# Copy the config file from the template
 cp .env.example .env
 ```
-现在, 编辑 `.env` 文件。**最关键的配置是 `REDIS_HOST` 和 `REDIS_PORT`**, 它们必须指向你的 `proxyburst-client` 所连接的同一个 Redis 服务器。
+Now, edit the `.env` file. **The most critical settings are `REDIS_HOST` and `REDIS_PORT`**, which must point to the same Redis server your `proxyburst-client` is connected to.
 
-| 环境变量            | 描述                                                                         | 默认值               |
-| :------------------ | :--------------------------------------------------------------------------- | :------------------- |
-| `REDIS_HOST`        | **必需**: Redis 服务器的地址。                                               | `127.0.0.1`          |
-| `REDIS_PORT`        | **必需**: Redis 服务器的端口。                                               | `6379`               |
-| `REDIS_PASSWORD`    | Redis 的连接密码（如果没有则留空）。                                         | `(无)`               |
-| `QUEUE_NAME`        | **必需**: 监听的任务队列名称, **必须**与客户端的配置完全一致。               | `proxyburst-v2-jobs` |
-| `CONCURRENCY`       | 此执行器实例能并发处理的任务数量。可以看作是这个“工人”同时能处理多少张工单。 | `50`                 |
-| `LOG_LEVEL`         | 日志输出的详细级别 (`info`, `debug`, `error`)。                              | `info`               |
-| `HEALTH_CHECK_PORT` | 健康检查 HTTP 服务器的监听端口。                                             | `3000`               |
+| Environment Variable | Description                                                                                | Default Value        |
+| :------------------- | :----------------------------------------------------------------------------------------- | :------------------- |
+| `REDIS_HOST`         | **Required**: The address of the Redis server.                                             | `127.0.0.1`          |
+| `REDIS_PORT`         | **Required**: The port of the Redis server.                                                | `6379`               |
+| `REDIS_PASSWORD`     | The connection password for Redis (leave blank if none).                                   | `(none)`             |
+| `QUEUE_NAME`         | **Required**: The name of the task queue to listen on. **Must** match the client's config. | `proxyburst-v2-jobs` |
+| `CONCURRENCY`        | The number of tasks this executor instance can process concurrently.                       | `50`                 |
+| `LOG_LEVEL`          | The verbosity level for logs (`info`, `debug`, `error`).                                   | `info`               |
+| `HEALTH_CHECK_PORT`  | The listening port for the health check HTTP server.                                       | `3000`               |
 
-### 第 3 步: 启动！
+### Step 3: Launch!
 ```bash
-# 用于生产环境
+# For production
 npm start
 
-# 用于本地开发 (代码变动时会自动重启)
+# For local development (restarts automatically on code changes)
 npm run dev
 ```
-一旦启动, 你会看到日志输出, 表明执行器已经连接到 Redis 并开始监听任务。
+Once started, you will see log output indicating that the executor has connected to Redis and is listening for tasks.
 
-> **提示**: 在 `proxyburst-client` 目录中运行 `node test-client.js` 可以向队列发送测试任务, 以验证你的执行器是否在正常工作。
+> **Tip**: Run `node test-client.js` in the `proxyburst-client` directory to send test jobs to the queue and verify that your executor is working correctly.
 
 ---
 
-## 4. Docker 部署 (推荐)
+## 4. Docker Deployment (Recommended)
 
-在生产环境中, 我们强烈建议使用 Docker 来运行执行器, 这能确保环境的一致性并简化管理。
+For production environments, we strongly recommend running the executor using Docker. This ensures a consistent environment and simplifies management.
 
-### 1. 构建镜像
-在 `proxyburst-executor` 目录下, 运行:
+### 1. Build the Image
+In the `proxyburst-executor` directory, run:
 ```bash
 docker build -t proxyburst-executor:latest .
 ```
 
-### 2. 运行容器
-使用 `docker run` 命令来启动一个或多个执行器实例。
+### 2. Run the Container(s)
+Use the `docker run` command to start one or more executor instances.
 ```bash
-# 启动第一个工人
+# Start the first worker
 docker run -d --rm \
   --name executor-1 \
   -e REDIS_HOST=your-redis-ip \
@@ -94,7 +98,7 @@ docker run -d --rm \
   -p 3001:3000 \
   proxyburst-executor:latest
 
-# 启动第二个工人 (注意端口映射不同)
+# Start a second worker (note the different port mapping)
 docker run -d --rm \
   --name executor-2 \
   -e REDIS_HOST=your-redis-ip \
@@ -104,4 +108,4 @@ docker run -d --rm \
   -p 3002:3000 \
   proxyburst-executor:latest
 ```
-现在你就拥有了一个由两个“工人”组成的施工队, 它们的处理能力是单个实例的两倍！你可以根据需要启动任意多个。
+You now have a construction crew of two workers, giving you double the processing power of a single instance! You can start as many as you need. 
